@@ -68,12 +68,14 @@ A comprehensive queue management system built with Laravel 12, designed specific
 
 ### 🎯 Core Functionality
 
--   **Real-time Queue Management** - Live updates across all interfaces
+-   **Real-time Queue Management** - Live updates across all interfaces using Livewire
 -   **Voice Announcements** - Browser-native speech synthesis for patient calls
--   **Thermal Printing** - USB/Bluetooth printer integration for queue tickets
+-   **Thermal Printing** - USB/Bluetooth printer integration with fallback handling
 -   **Multi-Service Support** - Handle different services (General, Pharmacy, Lab, etc.)
--   **Queue Recall System** - Recall skipped patients
--   **Daily Auto-Reset** - Queue numbers reset daily at 00:00 WIB
+-   **Queue Recall System** - Recall skipped patients with action buttons
+-   **Daily Auto-Reset** - Queue numbers reset daily at 00:00 WIB (Asia/Jakarta timezone)
+-   **Optional Patient Names** - Create queues with or without patient information
+-   **Fixed Queue Code Constraints** - Allows daily queue number resets without conflicts
 
 ### 👥 User Roles & Access
 
@@ -138,20 +140,38 @@ cd queue-app
 ### Manual Installation
 
 ```bash
-# Install dependencies
-composer install
-npm install && npm run build
+# Clone repository
+git clone <repository-url>
+cd queue-app
 
-# Setup environment
+# Install PHP dependencies
+composer install
+
+# Install Node.js dependencies and build assets
+npm install
+npm run build
+
+# Setup environment file
 cp .env.example .env
 php artisan key:generate
 
-# Database setup
+# Database setup (SQLite)
+touch database/database.sqlite
 php artisan migrate
+
+# Run database seeders
 php artisan db:seed
 
+# Create admin user (if not seeded)
+php artisan make:command CreateAdminUser
+# Or use the existing create_admin.php script:
+php create_admin.php
+
+# Clear caches and optimize
+php artisan optimize:clear
+
 # Start development server
-php artisan serve
+php artisan serve --host=0.0.0.0 --port=8000
 ```
 
 ## 🚀 Usage
@@ -165,83 +185,114 @@ php artisan serve
 ### Default Users
 
 ```
-Admin: admin@trimulyo.com / password123
-Staff: staff@trimulyo.com / password123
+Admin: admin@test.com / password
+Staff: staff@test.com / password
 ```
+
+**Note**: Use the `create_admin.php` script to create your first admin user if seeders don't run automatically.
 
 ### Queue Workflow
 
-1. **Patient Registration** - Staff creates queue entry
-2. **Ticket Printing** - Automatic thermal printer output
+1. **Patient Registration** - Staff creates queue entry (patient name is optional)
+2. **Ticket Printing** - Automatic thermal printer output (with fallback handling)
 3. **Queue Display** - Real-time updates on public screens
 4. **Patient Calling** - Staff calls patients with voice announcements
-5. **Status Management** - Mark as done, skip, or recall patients
+5. **Status Management** - Call, finish, skip, or recall patients via action buttons
+6. **Daily Reset** - Queue numbers reset automatically at midnight WIB timezone
 
 ## 🔧 Configuration
 
-### Broadcasting Setup
+### Environment Setup
 
 ```env
+# Database (SQLite default)
+DB_CONNECTION=sqlite
+DB_DATABASE=/absolute/path/to/database/database.sqlite
+
+# Broadcasting Setup (optional)
 BROADCAST_CONNECTION=pusher
 PUSHER_APP_ID=your-app-id
 PUSHER_APP_KEY=your-app-key
 PUSHER_APP_SECRET=your-app-secret
 PUSHER_APP_CLUSTER=mt1
+
+# Application Settings
+APP_TIMEZONE=Asia/Jakarta
 ```
 
 ### Queue Configuration
 
 -   Queue numbering resets daily at 00:00 WIB (GMT+7)
 -   Per-service counter system (GEN-001, PHR-001, etc.)
--   Automatic database cleanup
+-   **Fixed**: Removed unique constraint on queue codes to allow daily resets
+-   Patient names are optional when creating queues
+-   Automatic database cleanup of old records
 
 ### Printer Configuration
 
 -   Supports USB and Bluetooth thermal printers
 -   ESC/POS command formatting
--   Automatic fallback if printer unavailable
+-   Automatic fallback with error logging if printer unavailable
+-   Print queue tickets with clinic branding
 
 ## 🧪 Testing
 
 Run the comprehensive test suite:
 
 ```bash
+# Run all tests
 php artisan test
+
+# Run specific test files
+php artisan test tests/Feature/QueueManagementTest.php
+
+# Run tests with coverage
+php artisan test --coverage
 ```
 
 ### Test Coverage
 
--   ✅ Queue Service Logic
+-   ✅ Queue Service Logic (create, call, skip, recall)
 -   ✅ User Authentication & Authorization
--   ✅ Staff Dashboard Functionality
--   ✅ Role-based Access Control
--   ✅ Queue Numbering System
--   ✅ Daily Reset Functionality
+-   ✅ Staff Dashboard Functionality (Livewire components)
+-   ✅ Role-based Access Control (Admin, Staff roles)
+-   ✅ Queue Numbering System (daily reset, per-service counters)
+-   ✅ Database Constraints (unique code constraint removal)
+-   ✅ Timezone Handling (Asia/Jakarta timezone)
+-   ✅ Optional Patient Names (validation updates)
 
 ## 📁 Project Structure
 
 ```
 app/
-├── Events/              # Broadcasting events
+├── Events/              # Broadcasting events (QueueCreated, QueueCalled, etc.)
+├── Filament/           # Admin panel resources and schemas
 ├── Http/
 │   ├── Controllers/     # Request handlers (*Handler naming)
-│   ├── Livewire/       # Interactive components
+│   ├── Livewire/       # Interactive components (StaffDashboard, PublicDisplay)
 │   └── Requests/       # Form validation
-├── Models/             # Eloquent models
-├── Policies/           # Authorization policies
-└── Services/           # Business logic
+├── Models/             # Eloquent models (Queue, Service, User)
+├── Policies/           # Authorization policies (QueuePolicy)
+└── Services/           # Business logic (QueueService, PrinterService)
 
 resources/
-├── js/                 # Frontend JavaScript
+├── css/                # Tailwind CSS files
+├── js/                 # Frontend JavaScript and Echo configuration
 ├── views/
-│   ├── components/     # Blade components
+│   ├── components/     # Blade components (queue-card, alerts, etc.)
+│   │   └── layouts/    # Livewire layouts (app.blade.php)
 │   ├── livewire/      # Livewire templates
-│   └── layouts/       # Page layouts
+│   ├── layouts/       # Main page layouts
+│   └── staff/         # Staff-specific views
 
 database/
-├── factories/          # Test data factories
-├── migrations/         # Database schema
-└── seeders/           # Sample data
+├── factories/          # Test data factories (QueueFactory, ServiceFactory)
+├── migrations/         # Database schema (includes queue code constraint fixes)
+└── seeders/           # Sample data and admin user creation
+
+public/
+├── build/             # Compiled assets (CSS/JS)
+└── index.php          # Application entry point
 ```
 
 ## 🎯 Key Design Principles
@@ -328,37 +379,50 @@ database/
 -   Queue analytics
 -   Printer status
 
-## 🔄 Background Jobs
+## 🔄 Background Jobs & Events
 
 ### Queue Processing
 
 ```bash
-# Start queue worker
+# Start queue worker (for event broadcasting)
 php artisan queue:work --tries=3 --timeout=60
 
-# Monitor queues
+# Monitor queue jobs
 php artisan queue:monitor
+
+# Process failed jobs
+php artisan queue:retry all
 ```
+
+### Real-time Events
+
+-   `QueueCreated` - Broadcast when new patient is added
+-   `QueueCalled` - Broadcast when patient is called
+-   `QueueRecalled` - Broadcast when skipped patient is recalled
 
 ### Scheduled Tasks
 
--   Daily queue number reset
+-   Daily queue number reset (handled by timezone logic)
 -   Cleanup old queue records
--   Generate daily reports
--   System maintenance
+-   Printer connection monitoring
+-   System health checks
 
 ## 🌐 Deployment
 
 ### Production Checklist
 
--   [ ] Change default passwords
--   [ ] Configure proper database
+-   [ ] Change default passwords (`admin@test.com` / `password`)
+-   [ ] Configure proper database (MySQL/PostgreSQL for production)
 -   [ ] Set up SSL certificates
--   [ ] Configure broadcasting service
--   [ ] Set up queue workers
--   [ ] Configure printer connections
--   [ ] Test voice announcements
--   [ ] Verify all user roles
+-   [ ] Configure broadcasting service (Pusher/WebSockets)
+-   [ ] Set up queue workers for event processing
+-   [ ] Configure printer connections (USB/Bluetooth thermal printers)
+-   [ ] Test voice announcements in target browsers
+-   [ ] Verify all user roles (Admin, Staff permissions)
+-   [ ] Run database migrations (especially queue code constraint fix)
+-   [ ] Set correct timezone (Asia/Jakarta)
+-   [ ] Test daily queue number reset functionality
+-   [ ] Configure file permissions for SQLite database
 
 ### Server Requirements
 
@@ -368,6 +432,66 @@ php artisan queue:monitor
 -   WebSocket server (optional)
 -   Printer drivers (for local printing)
 
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Queue Creation Error: "UNIQUE constraint failed: queues.code"
+
+**Solution**: Run the migration to remove unique constraint:
+
+```bash
+php artisan migrate
+# This will run the migration: remove_unique_constraint_from_queues_code
+```
+
+#### Livewire Error: "Layout view not found: [components.layouts.app]"
+
+**Solution**: Ensure the layout file exists:
+
+```bash
+# Check if file exists
+ls resources/views/components/layouts/app.blade.php
+# If missing, it should be created automatically during setup
+```
+
+#### Staff Dashboard Shows "Undefined variable $services"
+
+**Solution**: Clear view cache and restart server:
+
+```bash
+php artisan view:clear
+php artisan optimize:clear
+php artisan serve
+```
+
+#### Queue Numbers Not Resetting Daily
+
+**Solution**: Verify timezone configuration:
+
+```bash
+# In .env file:
+APP_TIMEZONE=Asia/Jakarta
+# Clear config cache:
+php artisan config:clear
+```
+
+### Development Commands
+
+```bash
+# Clear all caches
+php artisan optimize:clear
+
+# Rebuild frontend assets
+npm run build
+
+# Reset database (development only)
+php artisan migrate:fresh --seed
+
+# Check queue workers
+php artisan queue:work --once
+```
+
 ## 🤝 Contributing
 
 This system follows Laravel best practices and includes:
@@ -376,6 +500,7 @@ This system follows Laravel best practices and includes:
 -   Clean architecture patterns
 -   Detailed documentation
 -   Code quality standards
+-   PSR-12 coding standards
 
 ## 📄 License
 
