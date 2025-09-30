@@ -44,16 +44,17 @@ test('staff can create queue', function () {
     $user = User::factory()->create();
     $user->assignRole('Staff');
     $service = Service::factory()->create();
+    $destination = \App\Models\Destination::factory()->create();
 
     $response = $this->actingAs($user)->post('/queues', [
         'service_id' => $service->id,
-        'patient_name' => 'John Doe',
+        'destination_id' => $destination->id,
     ]);
 
     $response->assertRedirect();
     $this->assertDatabaseHas('queues', [
         'service_id' => $service->id,
-        'patient_name' => 'John Doe',
+        'destination_id' => $destination->id,
         'status' => 'waiting',
     ]);
 });
@@ -67,15 +68,12 @@ test('staff can call queue', function () {
         'status' => 'waiting',
     ]);
 
-    $response = $this->actingAs($user)->patch("/queues/{$queue->id}/call", [
-        'counter' => '1',
-    ]);
+    $response = $this->actingAs($user)->patch("/queues/{$queue->id}/call");
 
     $response->assertStatus(200);
     $this->assertDatabaseHas('queues', [
         'id' => $queue->id,
         'status' => 'called',
-        'counter' => '1',
     ]);
 });
 

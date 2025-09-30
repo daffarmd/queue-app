@@ -53,24 +53,167 @@
   <!-- Voice Announcement Script -->
   <script>
     document.addEventListener('livewire:initialized', () => {
-      Livewire.on('announceQueue', (event) => {
-        // Check if speech synthesis is supported
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(event[0].message);
-          utterance.lang = 'id-ID'; // Indonesian
-          utterance.rate = 0.8;
-          utterance.volume = 1.0;
-          utterance.pitch = 1.0;
+      console.log('Livewire initialized, setting up voice announcements...');
 
-          // Try to use Indonesian voice if available
-          const voices = speechSynthesis.getVoices();
-          const indonesianVoice = voices.find(voice => voice.lang.startsWith('id'));
-          if (indonesianVoice) {
-            utterance.voice = indonesianVoice;
+      // Track current speech state
+      let currentUtterance = null;
+      let isAnnouncing = false;
+
+      // Wait for voices to be loaded
+      function waitForVoices() {
+        return new Promise((resolve) => {
+          if (speechSynthesis.getVoices().length > 0) {
+            resolve();
+          } else {
+            speechSynthesis.addEventListener('voiceschanged', resolve, { once: true });
           }
+        });
+      }
 
-          speechSynthesis.speak(utterance);
+      // Stop any ongoing speech
+      function stopCurrentSpeech() {
+        if (isAnnouncing && speechSynthesis.speaking) {
+          console.log('🛑 Stopping current speech announcement');
+          speechSynthesis.cancel();
+          currentUtterance = null;
+          isAnnouncing = false;
         }
+      }
+
+      // Voice announcement function with multiple fallback strategies
+      async function announceMessage(message) {
+        console.log('🔊 Attempting to announce:', message);
+
+        // Stop any ongoing speech before starting new one
+        stopCurrentSpeech();
+
+        // Strategy 1: Try with system default (no specific voice)
+        async function tryBasicSpeech() {
+          return new Promise((resolve) => {
+            console.log('🎯 Strategy 1: Basic speech synthesis');
+            const utterance = new SpeechSynthesisUtterance(message);
+            // Use minimal settings for maximum compatibility
+            utterance.rate = 1.0;
+            utterance.volume = 1.0;
+            utterance.pitch = 1.0;
+            // Don't set language or voice - let browser decide
+
+            currentUtterance = utterance;
+            isAnnouncing = true;
+
+            utterance.onstart = () => {
+              console.log('✅ Basic speech started');
+              resolve(true);
+            };
+            utterance.onend = () => {
+              console.log('✅ Basic speech ended');
+              currentUtterance = null;
+              isAnnouncing = false;
+            };
+            utterance.onerror = (e) => {
+              console.log('❌ Basic speech failed:', e.error);
+              currentUtterance = null;
+              isAnnouncing = false;
+              resolve(false);
+            };
+
+            speechSynthesis.speak(utterance);
+
+            // Timeout after 3 seconds if nothing happens
+            setTimeout(() => {
+              if (currentUtterance === utterance && isAnnouncing) {
+                currentUtterance = null;
+                isAnnouncing = false;
+                resolve(false);
+              }
+            }, 3000);
+          });
+        }
+
+        // Strategy 2: Try with available voices
+        async function tryWithVoices() {
+          return new Promise((resolve) => {
+            console.log('🎯 Strategy 2: Using available voices');
+            const voices = speechSynthesis.getVoices();
+            console.log('Available voices:', voices.length);
+
+            if (voices.length === 0) {
+              resolve(false);
+              return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(message);
+            // Use the first available voice
+            utterance.voice = voices[0];
+            utterance.lang = voices[0].lang;
+            utterance.rate = 1.0;
+            utterance.volume = 1.0;
+            utterance.pitch = 1.0;
+
+            console.log('Using voice:', voices[0].name, voices[0].lang);
+
+            currentUtterance = utterance;
+            isAnnouncing = true;
+
+            utterance.onstart = () => {
+              console.log('✅ Voice-specific speech started');
+              resolve(true);
+            };
+            utterance.onend = () => {
+              console.log('✅ Voice-specific speech ended');
+              currentUtterance = null;
+              isAnnouncing = false;
+            };
+            utterance.onerror = (e) => {
+              console.log('❌ Voice-specific speech failed:', e.error);
+              currentUtterance = null;
+              isAnnouncing = false;
+              resolve(false);
+            };
+
+            speechSynthesis.speak(utterance);
+            setTimeout(() => {
+              if (currentUtterance === utterance && isAnnouncing) {
+                currentUtterance = null;
+                isAnnouncing = false;
+                resolve(false);
+              }
+            }, 3000);
+          });
+        }
+
+        // Strategy 3: Silent fallback (no visual notification)
+        function silentFallback() {
+          console.log('🎯 Strategy 3: Silent fallback - no visual notification');
+          console.log('⚠️ Speech synthesis failed or not supported, continuing silently');
+        }
+
+        // Execute strategies in order
+        if ('speechSynthesis' in window) {
+          // Wait for voices to load
+          await waitForVoices();
+
+          // Try basic speech first
+          const basicSuccess = await tryBasicSpeech();
+          if (basicSuccess) return;
+
+          // Try with specific voices
+          const voiceSuccess = await tryWithVoices();
+          if (voiceSuccess) return;
+
+          // If all speech attempts fail, use silent fallback
+          console.log('⚠️ All speech synthesis attempts failed, using silent fallback');
+          silentFallback();
+        } else {
+          console.log('⚠️ Speech synthesis not supported, using silent fallback');
+          silentFallback();
+        }
+      }
+
+      Livewire.on('announceQueue', async (event) => {
+        console.log('Voice announcement triggered:', event);
+        const message = event[0].message;
+        await announceMessage(message);
       });
     });
 

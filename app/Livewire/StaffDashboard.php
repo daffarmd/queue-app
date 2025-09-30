@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\Destination;
 use App\Models\Queue;
 use App\Models\Service;
 use App\Services\PrinterService;
@@ -14,31 +15,52 @@ class StaffDashboard extends Component
 {
     protected string $layout = 'components.layouts.app';
 
-    public $services;
     public $selectedService = null;
 
-    public $patientName = '';
-
-    public $counter = '1';
+    public $selectedDestination = null;
 
     protected $listeners = [
-        'queueCreated' => 'refreshQueues',
-        'queueCalled' => 'refreshQueues',
-        'queueRecalled' => 'refreshQueues',
+        'queueCreated' => '$refresh',
+        'queueCalled' => '$refresh',
+        'queueRecalled' => '$refresh',
     ];
 
     protected $rules = [
         'selectedService' => 'required|exists:services,id',
-        'patientName' => 'required|string|max:255|regex:/^[a-zA-Z\s\.\-\']+$/u',
-        'counter' => 'required|string|max:10|alpha_num',
+        'selectedDestination' => 'required|exists:destinations,id',
     ];
 
     protected $messages = [
         'selectedService.required' => 'Please select a service.',
-        'patientName.required' => 'Patient name is required.',
-        'patientName.regex' => 'Patient name contains invalid characters.',
-        'counter.required' => 'Counter number is required.',
+        'selectedDestination.required' => 'Please select a destination.',
     ];
+
+    public function getServicesProperty()
+    {
+        return Service::all();
+    }
+
+    public function getDestinationsProperty()
+    {
+        return Destination::all();
+    }
+
+    public function getQueuesProperty()
+    {
+        $todayWIB = Carbon::now('Asia/Jakarta')->startOfDay();
+
+        $allQueues = Queue::with(['service', 'destination'])
+            ->where('created_at', '>=', $todayWIB)
+            ->orderBy('created_at')
+            ->get();
+
+        return [
+            'waiting' => $allQueues->where('status', 'waiting')->values(),
+            // UI: Show both called and recalled queues in "called" section
+            'called' => $allQueues->whereIn('status', ['called', 'recalled'])->values(),
+            'skipped' => $allQueues->where('status', 'skipped')->values(),
+        ];
+    }
 
     public function mount()
     {
@@ -46,8 +68,6 @@ class StaffDashboard extends Component
         if (! Auth::check() || ! Auth::user()->hasAnyRole(['Admin', 'Staff'])) {
             abort(403, 'Unauthorized access');
         }
-
-        $this->services = Service::all();
     }
 
     public function createQueue()
@@ -57,7 +77,7 @@ class StaffDashboard extends Component
         try {
             $queue = app(QueueService::class)->createQueue(
                 $this->selectedService,
-                $this->patientName
+                $this->selectedDestination
             );
 
             // Attempt to print ticket
@@ -69,8 +89,7 @@ class StaffDashboard extends Component
                 session()->flash('success', 'Queue created and printed: '.$queue->code);
             }
 
-            $this->reset(['selectedService', 'patientName']);
-            $this->refreshQueues();
+            $this->reset(['selectedService', 'selectedDestination']);
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to create queue: '.$e->getMessage());
@@ -88,10 +107,9 @@ class StaffDashboard extends Component
                 return;
             }
 
-            app(QueueService::class)->callQueue($queue, $this->counter);
+            app(QueueService::class)->callQueue($queue);
 
             session()->flash('success', 'Queue '.$queue->code.' called successfully');
-            $this->refreshQueues();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to call queue: '.$e->getMessage());
@@ -105,7 +123,6 @@ class StaffDashboard extends Component
             app(QueueService::class)->finishQueue($queue);
 
             session()->flash('success', 'Queue '.$queue->code.' finished');
-            $this->refreshQueues();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to finish queue: '.$e->getMessage());
@@ -119,7 +136,6 @@ class StaffDashboard extends Component
             app(QueueService::class)->skipQueue($queue);
 
             session()->flash('info', 'Queue '.$queue->code.' skipped');
-            $this->refreshQueues();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to skip queue: '.$e->getMessage());
@@ -137,31 +153,13 @@ class StaffDashboard extends Component
                 return;
             }
 
-            app(QueueService::class)->recallQueue($queue, $this->counter);
+            app(QueueService::class)->recallQueue($queue);
 
             session()->flash('success', 'Queue '.$queue->code.' recalled successfully');
-            $this->refreshQueues();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to recall queue: '.$e->getMessage());
         }
-    }
-
-    public function getQueuesProperty()
-    {
-        $todayWIB = Carbon::now('Asia/Jakarta')->startOfDay();
-
-        return Queue::with('service')
-            ->where('created_at', '>=', $todayWIB)
-            ->orderBy('created_at')
-            ->get()
-            ->groupBy('status');
-    }
-
-    public function refreshQueues()
-    {
-        // This method can stay for event listeners to trigger re-rendering
-        // The actual queues will be computed via the getQueuesProperty method
     }
 
     public function render()

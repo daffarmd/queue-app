@@ -40,9 +40,10 @@ class QueueRecalled implements ShouldBroadcast
         return [
             'id' => $this->queue->id,
             'code' => $this->queue->code,
-            'patient_name' => $this->queue->patient_name,
+            'destination_name' => $this->queue->destination?->name ?? 'your destination',
             'service' => $this->queue->service->name,
             'service_id' => $this->queue->service_id,
+            'destination_id' => $this->queue->destination_id,
             'counter' => $this->queue->counter,
             'status' => $this->queue->status,
             'called_at' => $this->queue->called_at?->toISOString(),

@@ -11,11 +11,12 @@ beforeEach(function () {
 
 test('can create queue', function () {
     $service = Service::factory()->create(['code' => 'GEN']);
+    $destination = \App\Models\Destination::factory()->create();
 
-    $queue = $this->queueService->createQueue($service->id, 'John Doe');
+    $queue = $this->queueService->createQueue($service->id, $destination->id);
 
     expect($queue)->toBeInstanceOf(Queue::class);
-    expect($queue->patient_name)->toBe('John Doe');
+    expect($queue->destination_id)->toBe($destination->id);
     expect($queue->code)->toBe('GEN-001');
     expect($queue->number)->toBe(1);
     expect($queue->status)->toBe('waiting');
@@ -23,9 +24,11 @@ test('can create queue', function () {
 
 test('queue numbering increments per service', function () {
     $service = Service::factory()->create(['code' => 'GEN']);
+    $destination1 = \App\Models\Destination::factory()->create();
+    $destination2 = \App\Models\Destination::factory()->create();
 
-    $queue1 = $this->queueService->createQueue($service->id, 'Patient 1');
-    $queue2 = $this->queueService->createQueue($service->id, 'Patient 2');
+    $queue1 = $this->queueService->createQueue($service->id, $destination1->id);
+    $queue2 = $this->queueService->createQueue($service->id, $destination2->id);
 
     expect($queue1->code)->toBe('GEN-001');
     expect($queue2->code)->toBe('GEN-002');
@@ -45,7 +48,8 @@ test('queue numbering resets daily', function () {
     ]);
 
     // Create queue today - should start from 1
-    $queue = $this->queueService->createQueue($service->id, 'Test Patient');
+    $destination = \App\Models\Destination::factory()->create();
+    $queue = $this->queueService->createQueue($service->id, $destination->id);
 
     expect($queue->number)->toBe(1);
     expect($queue->code)->toBe('GEN-001');
@@ -58,10 +62,9 @@ test('can call queue', function () {
         'status' => 'waiting',
     ]);
 
-    $updatedQueue = $this->queueService->callQueue($queue, '1');
+    $updatedQueue = $this->queueService->callQueue($queue);
 
     expect($updatedQueue->status)->toBe('called');
-    expect($updatedQueue->counter)->toBe('1');
     expect($updatedQueue->called_at)->not->toBeNull();
 });
 
@@ -72,10 +75,9 @@ test('can recall skipped queue', function () {
         'status' => 'skipped',
     ]);
 
-    $updatedQueue = $this->queueService->recallQueue($queue, '2');
+    $updatedQueue = $this->queueService->recallQueue($queue);
 
     expect($updatedQueue->status)->toBe('recalled');
-    expect($updatedQueue->counter)->toBe('2');
     expect($updatedQueue->called_at)->not->toBeNull();
     expect($updatedQueue->finished_at)->toBeNull();
 });

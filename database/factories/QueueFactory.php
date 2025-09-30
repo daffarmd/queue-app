@@ -25,7 +25,7 @@ class QueueFactory extends Factory
             'patient_name' => $this->faker->name(),
             'number' => $number,
             'code' => $service->code.'-'.str_pad($number, 3, '0', STR_PAD_LEFT),
-            'counter' => $this->faker->optional()->numerify('#'),
+
             'status' => $this->faker->randomElement(['waiting', 'called', 'done', 'skipped', 'recalled']),
             'called_at' => $this->faker->optional()->dateTimeThisMonth(),
             'finished_at' => $this->faker->optional()->dateTimeThisMonth(),

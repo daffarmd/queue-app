@@ -9,6 +9,10 @@ $statusClasses = [
     'skipped' => ['border' => 'border-red-400', 'bg' => 'bg-red-100', 'text' => 'text-red-800']
 ];
 $classes = $statusClasses[$queue->status] ?? $statusClasses['skipped'];
+
+// For UI purposes, show recalled as called with special indicator
+$displayStatus = $queue->status === 'recalled' ? 'called' : $queue->status;
+$isRecalled = $queue->status === 'recalled';
 @endphp
 
 <div class="bg-white rounded-lg shadow-md p-4 border-l-4 {{ $classes['border'] }}">
@@ -18,18 +22,17 @@ $classes = $statusClasses[$queue->status] ?? $statusClasses['skipped'];
       <div class="flex items-center space-x-2">
         <h3 class="text-lg font-bold text-gray-900">{{ $queue->code }}</h3>
         <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $classes['bg'] }} {{ $classes['text'] }}">
-          {{ ucfirst($queue->status) }}
+          {{ ucfirst($displayStatus) }}
+          @if($isRecalled)
+            <span class="ml-1">🔄</span>
+          @endif
         </span>
       </div>
 
-      <p class="text-gray-700 font-medium">{{ $queue->patient_name }}</p>
+      <p class="text-gray-700 font-medium">{{ $queue->destination?->name ?? 'No destination' }}</p>
       <p class="text-sm text-gray-500">{{ $queue->service->name }}</p>
 
-      @if($queue->counter)
-        <p class="text-sm text-gray-600 mt-1">
-          <span class="font-medium">Counter:</span> {{ $queue->counter }}
-        </p>
-      @endif
+
 
       @if($queue->called_at)
         <p class="text-xs text-gray-500 mt-1">
@@ -52,7 +55,7 @@ $classes = $statusClasses[$queue->status] ?? $statusClasses['skipped'];
         </button>
       @endif
 
-      @if($queue->status === 'called')
+      @if(in_array($queue->status, ['called', 'recalled']))
         <button wire:click="finishQueue({{ $queue->id }})"
                 class="bg-[#4CAF50] text-white px-3 py-1 rounded text-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
           Done

@@ -10,20 +10,26 @@ class PublicDisplay extends Component
 {
     public ?Queue $currentQueue = null;
 
-    public $waitingQueues = [];
+    public $waitingQueues;
 
-    public $calledQueues = [];
+    public $calledQueues;
 
-    public $recalledQueues = [];
+    public $recalledQueues;
 
     protected $listeners = [
         'queueCalled' => 'handleQueueCalled',
         'queueCreated' => 'refreshDisplay',
         'queueRecalled' => 'handleQueueRecalled',
+        'checkForNewCalls' => 'checkForNewCalls',
     ];
 
     public function mount()
     {
+        // Initialize collections
+        $this->waitingQueues = collect();
+        $this->calledQueues = collect();
+        $this->recalledQueues = collect();
+
         $this->refreshDisplay();
     }
 
@@ -33,7 +39,7 @@ class PublicDisplay extends Component
 
         // Trigger voice announcement
         $this->dispatch('announceQueue', [
-            'message' => "Queue {$queueData['code']}, {$queueData['patient_name']}, please come to counter {$queueData['counter']}",
+            'message' => "Queue {$queueData['code']}, to {$queueData['destination_name']}, please come to your destination",
         ]);
     }
 
@@ -43,42 +49,48 @@ class PublicDisplay extends Component
 
         // Trigger voice announcement for recalled queue
         $this->dispatch('announceQueue', [
-            'message' => "Queue {$queueData['code']}, {$queueData['patient_name']}, please return to counter {$queueData['counter']}",
+            'message' => "Queue {$queueData['code']}, to {$queueData['destination_name']}, please return to your destination",
         ]);
+    }
+
+    // Add a method to check for new calls and trigger announcements
+    public function checkForNewCalls()
+    {
+        $previousQueue = $this->currentQueue;
+        $this->refreshDisplay();
+
+        // If there's a new current queue, announce it
+        if ($this->currentQueue && (! $previousQueue || $this->currentQueue->id !== $previousQueue->id)) {
+            $destinationName = $this->currentQueue->destination?->name ?? 'your destination';
+            $this->dispatch('announceQueue', [
+                'message' => "Queue {$this->currentQueue->code}, to {$destinationName}, please come to your destination",
+            ]);
+        }
     }
 
     public function refreshDisplay()
     {
         $todayWIB = Carbon::now('Asia/Jakarta')->startOfDay();
 
-        // Get called queues (recently called)
-        $calledQueuesCollection = Queue::with('service')
-            ->where('status', 'called')
+        // Get current queue (most recent called or recalled queue)
+        // For UI purposes, recalled queues should appear as called
+        $this->currentQueue = Queue::with(['service', 'destination'])
+            ->whereIn('status', ['called', 'recalled'])
             ->whereDate('created_at', today())
             ->orderBy('called_at', 'desc')
-            ->take(5)
-            ->get();
-
-        $this->calledQueues = $calledQueuesCollection->toArray();
-
-        // Get the most recent called queue as current
-        $this->currentQueue = $calledQueuesCollection->first();
-
-        // Get recalled queues
-        $this->recalledQueues = Queue::with('service')
-            ->where('status', 'recalled')
-            ->whereDate('created_at', today())
-            ->orderBy('called_at', 'desc')
-            ->take(3)
-            ->get();
+            ->first();
 
         // Get waiting queues
-        $this->waitingQueues = Queue::with('service')
+        $this->waitingQueues = Queue::with(['service', 'destination'])
             ->where('status', 'waiting')
             ->whereDate('created_at', today())
             ->orderBy('created_at')
             ->take(10)
             ->get();
+
+        // Remove calledQueues and recalledQueues collections
+        $this->calledQueues = collect();
+        $this->recalledQueues = collect();
     }
 
     // Auto-refresh every 30 seconds

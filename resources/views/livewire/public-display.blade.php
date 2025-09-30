@@ -6,9 +6,14 @@
 
     @if($currentQueue)
       <div class="text-center">
-        <div class="inline-block bg-[#D32F2F] text-white px-8 py-4 rounded-lg mb-4">
+        <div class="inline-block bg-[#D32F2F] text-white px-8 py-4 rounded-lg mb-4 relative">
+          @if($currentQueue->status === 'recalled')
+            <div class="absolute -top-2 -right-2 bg-[#F59E0B] text-white text-xs px-2 py-1 rounded-full font-bold">
+              🔄 RECALLED
+            </div>
+          @endif
           <div class="text-6xl font-bold mb-2">{{ $currentQueue->code }}</div>
-          <div class="text-xl">{{ $currentQueue->patient_name }}</div>
+          <div class="text-xl">{{ $currentQueue->destination?->name ?? 'No destination' }}</div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -17,8 +22,8 @@
             <div class="text-lg font-semibold">{{ $currentQueue->service->name }}</div>
           </div>
           <div class="bg-gray-50 p-4 rounded-lg">
-            <div class="text-sm text-gray-600">Counter</div>
-            <div class="text-lg font-semibold">{{ $currentQueue->counter ?? 'N/A' }}</div>
+            <div class="text-sm text-gray-600">Destination</div>
+            <div class="text-lg font-semibold">{{ $currentQueue->destination?->name ?? 'No destination' }}</div>
           </div>
         </div>
       </div>
@@ -29,39 +34,6 @@
     @endif
   </div>
 
-  <!-- Recently Called Section -->
-  @if($calledQueues && $calledQueues->count() > 1)
-    <div class="bg-white rounded-xl shadow-lg p-6">
-      <h3 class="text-xl font-bold text-gray-900 mb-4">Recently Called</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        @foreach($calledQueues->skip(1)->take(4) as $queue)
-          <div class="bg-blue-50 p-4 rounded-lg text-center">
-            <div class="text-lg font-bold text-blue-700">{{ $queue->code }}</div>
-            <div class="text-sm text-gray-600">{{ $queue->service->name }}</div>
-            <div class="text-sm text-blue-600">Counter {{ $queue->counter ?? 'N/A' }}</div>
-          </div>
-        @endforeach
-      </div>
-    </div>
-  @endif
-
-  <!-- Recalled Queues Section -->
-  @if($recalledQueues && $recalledQueues->count() > 0)
-    <div class="bg-white rounded-xl shadow-lg p-6">
-      <h3 class="text-xl font-bold text-gray-900 mb-4">🔄 Recalled Queues</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        @foreach($recalledQueues as $queue)
-          <div class="bg-[#F59E0B] text-white p-4 rounded-lg text-center">
-            <div class="text-lg font-bold">{{ $queue->code }}</div>
-            <div class="text-sm">{{ $queue->patient_name }}</div>
-            <div class="text-xs opacity-90">{{ $queue->service->name }}</div>
-            <div class="text-sm font-semibold mt-1">Counter {{ $queue->counter ?? 'N/A' }}</div>
-          </div>
-        @endforeach
-      </div>
-    </div>
-  @endif
-
   <!-- Waiting Queues Section -->
   <div class="bg-white rounded-xl shadow-lg p-6">
     <h3 class="text-xl font-bold text-gray-900 mb-4">Waiting Queue</h3>
@@ -71,7 +43,7 @@
         @foreach($waitingQueues as $queue)
           <div class="bg-gray-50 p-4 rounded-lg text-center border-l-4 border-[#4CAF50]">
             <div class="text-lg font-bold text-gray-900">{{ $queue->code }}</div>
-            <div class="text-sm text-gray-600 truncate">{{ $queue->patient_name }}</div>
+            <div class="text-sm text-gray-600 truncate">{{ $queue->destination?->name ?? 'No destination' }}</div>
             <div class="text-xs text-gray-500">{{ $queue->service->name }}</div>
           </div>
         @endforeach
@@ -97,8 +69,8 @@
           <div>Your number will be called when ready</div>
         </div>
         <div>
-          <div class="font-semibold">🏥 Go to Counter</div>
-          <div>Proceed to the indicated counter when called</div>
+          <div class="font-semibold">🏥 Go to Destination</div>
+          <div>Proceed to the indicated destination when called</div>
         </div>
       </div>
     </div>
@@ -106,12 +78,20 @@
 
 </div>
 
-<!-- Auto-refresh functionality -->
+<!-- Auto-refresh functionality with voice announcement checking -->
 <script>
-  // Refresh the component every 10 seconds
+  // Refresh the component every 5 seconds and check for new calls
+  setInterval(() => {
+    if (typeof Livewire !== 'undefined') {
+      // Use the new checkForNewCalls method that includes voice announcements
+      Livewire.dispatch('checkForNewCalls');
+    }
+  }, 5000);
+
+  // Also keep the regular refresh for fallback
   setInterval(() => {
     if (typeof Livewire !== 'undefined') {
       Livewire.dispatch('refreshData');
     }
-  }, 10000);
+  }, 30000);
 </script>

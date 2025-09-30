@@ -11,7 +11,7 @@ use Carbon\Carbon;
 
 class QueueService
 {
-    public function createQueue(int $serviceId, string $patientName): Queue
+    public function createQueue(int $serviceId, int $destinationId): Queue
     {
         $service = Service::findOrFail($serviceId);
 
@@ -26,7 +26,7 @@ class QueueService
 
         $queue = Queue::create([
             'service_id' => $serviceId,
-            'patient_name' => $patientName,
+            'destination_id' => $destinationId,
             'number' => $nextNumber,
             'code' => $code,
             'status' => 'waiting',
@@ -37,11 +37,10 @@ class QueueService
         return $queue;
     }
 
-    public function callQueue(Queue $queue, string $counter): Queue
+    public function callQueue(Queue $queue): Queue
     {
         $queue->update([
             'status' => 'called',
-            'counter' => $counter,
             'called_at' => now(),
         ]);
 
@@ -70,14 +69,16 @@ class QueueService
         return $queue;
     }
 
-    public function recallQueue(Queue $queue, string $counter): Queue
+    public function recallQueue(Queue $queue): Queue
     {
-        $queue->update([
-            'status' => 'recalled',
-            'counter' => $counter,
-            'called_at' => now(),
-            'finished_at' => null,
-        ]);
+        // FIXED VERSION - This should definitely work
+        $queue->status = 'recalled';
+        $queue->called_at = now();
+        $queue->finished_at = null;
+        $queue->save();
+
+        // Force refresh to ensure we have the latest data
+        $queue->refresh();
 
         event(new QueueRecalled($queue));
 
