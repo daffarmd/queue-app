@@ -1,10 +1,554 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🏥 TRI MULYO Queue Management System
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="https://img.shields.io/badge/Laravel-12.x-red?style=for-the-badge&logo=laravel" alt="Laravel 12">
+  <img src="https://img.shields.io/badge/PHP-8.4-blue?style=for-the-badge&logo=php" alt="PHP 8.4">
+  <img src="https://img.shields.io/badge/Livewire-3.x-purple?style=for-the-badge" alt="Livewire 3">
+  <img src="https://img.shields.io/badge/Tailwind-4.x-teal?style=for-the-badge&logo=tailwindcss" alt="Tailwind CSS 4">
+  <img src="https://img.shields.io/badge/SQLite-Database-orange?style=for-the-badge&logo=sqlite" alt="SQLite">
+</p>
+
+A modern, comprehensive queue management system built with **Laravel 12** and **Livewire**, specifically designed for healthcare facilities. This system provides real-time queue management, intelligent voice announcements with interruption capability, destination-based routing, thermal printing, and role-based access control.
+
+## ✨ Key Features
+
+### 🎯 Core Functionality
+
+-   **Real-time Queue Management** - Live updates across all interfaces using WebSockets
+-   **Intelligent Voice Announcements** - Browser-native speech synthesis with interruption capability
+-   **Destination-Based System** - Route patients to specific destinations instead of generic counters
+-   **Smart Queue Recall** - Recalled queues appear as "called" with special indicators
+-   **Thermal Printing** - USB/Bluetooth printer integration with fallback handling
+-   **Multi-Service Support** - Handle different services (General, Pharmacy, Lab, etc.)
+-   **Daily Auto-Reset** - Queue numbers reset daily at 00:00 WIB (Asia/Jakarta timezone)
+-   **Custom TTS Messages** - Staff can customize voice announcement text per queue
+
+### 🔊 Advanced Voice System
+
+-   **Speech Interruption** - New announcements automatically stop previous ones
+-   **Destination-Based Announcements** - "Please come to your destination" instead of counter numbers
+-   **Multiple Speech Strategies** - Fallback mechanisms for browser compatibility
+-   **Real-time Voice Updates** - Announcements trigger immediately on queue status changes
+
+### 🎯 Destination Management
+
+-   **CRUD Destinations** - Full admin panel management for destinations
+-   **Required Destination Selection** - Every queue must have a destination assigned
+-   **Service-Independent** - Destinations work across all services
+-   **Simplified UI** - Clean interface without unnecessary counter inputs
+
+### 👥 User Roles & Access
+
+-   **Admin** - Full system management, FilamentPHP admin panel, destination management
+-   **Staff/Receptionist** - Create queues, call patients, manage queue flow, custom TTS
+-   **Doctor/Nurse** - Monitor queue status, view patient information
+-   **Display** - Public read-only access for display screens
+
+### 🎨 Modern User Experience
+
+-   **Responsive Design** - Mobile-first approach, works on all devices
+-   **TRI MULYO Branding** - Custom color scheme and professional design
+-   **Public Display Screen** - TV/kiosk friendly interface with destination display
+-   **Real-time Updates** - WebSocket-powered live synchronization
+-   **Clean UI** - Removed counter inputs, simplified destination-based interface
+
+## 🛠️ Technical Architecture
+
+### Backend Stack
+
+-   **Laravel 12** - Modern PHP framework with streamlined structure
+-   **PHP 8.4** - Latest PHP version with performance improvements
+-   **SQLite Database** - Lightweight, file-based database
+-   **Livewire 3** - Dynamic frontend components with modern features
+-   **Spatie Permissions** - Role-based access control
+-   **Laravel WebSockets** - Real-time broadcasting
+-   **FilamentPHP** - Modern admin panel
+
+### Frontend Stack
+
+-   **Blade Templates** - Server-side rendering with Livewire components
+-   **Tailwind CSS 4** - Latest utility-first CSS framework
+-   **Laravel Echo** - WebSocket client for real-time updates
+-   **SpeechSynthesis API** - Native browser voice announcements
+-   **Vite** - Modern asset building and hot reloading
+
+### Key Services
+
+-   **QueueService** - Core business logic for queue management
+-   **PrinterService** - Thermal printer integration
+-   **Voice Announcement System** - Speech interruption and management
+-   **Real-time Broadcasting** - WebSocket event handling
+
+## 📋 Installation
+
+### Prerequisites
+
+-   **PHP 8.4+** with required extensions
+-   **Composer** for dependency management
+-   **Node.js 18+** and **NPM** for asset building
+-   **SQLite** extension enabled
+
+### Quick Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd queue-app
+
+# Run automated deployment script
+chmod +x deploy.sh
+./deploy.sh
+```
+
+### Manual Installation
+
+```bash
+# Clone and navigate
+git clone <repository-url>
+cd queue-app
+
+# Install dependencies
+composer install --optimize-autoloader
+npm install
+
+# Environment setup
+cp .env.example .env
+php artisan key:generate
+
+# Database setup
+touch database/database.sqlite
+php artisan migrate --force
+php artisan db:seed
+
+# Build assets
+npm run build
+
+# Create admin user
+php create_admin.php
+
+# Optimize for production
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Start server
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+## 🚀 Usage
+
+### Access Points
+
+-   **Public Display**: `http://localhost:8000/` - Real-time queue display with destination info
+-   **Staff Dashboard**: `http://localhost:8000/staff` - Queue management with custom TTS
+-   **Admin Panel**: `http://localhost:8000/admin` - System management and destination CRUD
+
+### Default Users
+
+```
+Admin: admin@test.com / password
+Staff: staff@test.com / password
+```
+
+**⚠️ Important**: Change default passwords in production!
+
+### Enhanced Queue Workflow
+
+1. **Queue Creation** - Staff selects service and destination (required)
+2. **Custom TTS Input** - Staff can customize voice announcement text
+3. **Automatic Printing** - Thermal printer outputs ticket with destination info
+4. **Real-time Display** - Public screens show queues with destination information
+5. **Intelligent Calling** - Voice announcements with speech interruption
+6. **Smart Recall System** - Recalled queues appear as "called" with recall indicators
+7. **Destination Routing** - Patients directed to specific destinations, not generic counters
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```env
+# Database
+DB_CONNECTION=sqlite
+DB_DATABASE=/absolute/path/to/database/database.sqlite
+
+# Application
+APP_TIMEZONE=Asia/Jakarta
+
+# Broadcasting (optional)
+BROADCAST_CONNECTION=pusher
+PUSHER_APP_ID=your-app-id
+PUSHER_APP_KEY=your-app-key
+PUSHER_APP_SECRET=your-app-secret
+PUSHER_APP_CLUSTER=mt1
+```
+
+### Key Configuration Features
+
+-   **Daily Reset Logic** - Queue numbers reset at 00:00 WIB timezone
+-   **Destination Management** - Full CRUD through admin panel
+-   **Voice Settings** - Configurable speech synthesis options
+-   **Printer Fallback** - Graceful handling of printer unavailability
+-   **WebSocket Broadcasting** - Real-time event synchronization
+
+## 🎯 Database Schema
+
+### Core Tables
+
+```sql
+-- Services (General, Pharmacy, Lab, etc.)
+services: id, name, code, description, timestamps
+
+-- Destinations (Reception, Pharmacy Counter, Lab Room, etc.)
+destinations: id, name, code, description, timestamps
+
+-- Queues (without counter field)
+queues: id, service_id, destination_id, number, code, status,
+        called_at, finished_at, timestamps
+
+-- Users with roles
+users: id, name, email, password, timestamps
+```
+
+### Key Relationships
+
+-   `Queue` belongs to `Service` and `Destination`
+-   `Service` has many `Queues`
+-   `Destination` has many `Queues`
+-   Users have roles: Admin, Staff, Doctor
+
+## 🔊 Voice Announcement System
+
+### Advanced Features
+
+```javascript
+// Speech interruption system
+function stopCurrentSpeech() {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+    if (currentUtterance) {
+        currentUtterance = null;
+    }
+}
+
+// Multiple announcement strategies
+const announceQueue = (message) => {
+    stopCurrentSpeech(); // Always stop previous speech
+
+    // Strategy 1: Direct announcement
+    speakMessage(message);
+
+    // Strategy 2: Delayed fallback
+    setTimeout(() => speakMessage(message), 100);
+
+    // Strategy 3: Multiple attempts
+    let attempts = 0;
+    const maxAttempts = 3;
+    // ... implementation
+};
+```
+
+### Voice Message Examples
+
+-   **Queue Called**: "Queue GEN-001, to Reception, please come to your destination"
+-   **Queue Recalled**: "Queue PHR-002, to Pharmacy, please return to your destination"
+-   **Custom TTS**: Staff can input custom messages like "Queue GEN-003, John Doe, please proceed to consultation room"
+
+## 🎨 UI/UX Improvements
+
+### Removed Elements
+
+-   ❌ Counter input fields (simplified interface)
+-   ❌ Separate "Recalled" and "Recently Called" sections
+-   ❌ Generic counter references in voice announcements
+-   ❌ Queue count columns in admin tables
+-   ❌ Unnecessary view buttons in admin panel
+
+### Enhanced Elements
+
+-   ✅ Destination selection (required field)
+-   ✅ Custom TTS input for personalized announcements
+-   ✅ Unified "Called" section showing both called and recalled queues
+-   ✅ Recall indicators (🔄) for recalled queues
+-   ✅ Destination-based public display
+-   ✅ Clean admin interface for destination management
+
+## 🧪 Testing
+
+### Run Tests
+
+```bash
+# Full test suite
+php artisan test
+
+# Specific test categories
+php artisan test --group=queue
+php artisan test --group=destinations
+php artisan test tests/Feature/StaffDashboardTest.php
+
+# With coverage
+php artisan test --coverage
+```
+
+### Updated Test Coverage
+
+-   ✅ **Queue Service Logic** - Create, call, skip, recall without counter
+-   ✅ **Destination Management** - CRUD operations and relationships
+-   ✅ **Voice Announcements** - Speech interruption and custom messages
+-   ✅ **Staff Dashboard** - Destination selection and TTS functionality
+-   ✅ **Public Display** - Real-time updates with destination info
+-   ✅ **Admin Panel** - Destination management and clean UI
+-   ✅ **Database Schema** - Updated migrations and relationships
+
+## 📁 Project Structure
+
+```
+app/
+├── Events/
+│   ├── QueueCreated.php       # New queue with destination
+│   ├── QueueCalled.php        # Called with destination info
+│   └── QueueRecalled.php      # Recalled with indicators
+├── Filament/
+│   └── Resources/
+│       └── DestinationResource.php  # Destination CRUD
+├── Http/Livewire/
+│   ├── StaffDashboard.php     # No counter, custom TTS
+│   └── PublicDisplay.php      # Destination display
+├── Models/
+│   ├── Destination.php        # New destination model
+│   ├── Queue.php             # No counter field
+│   └── Service.php           # Unchanged
+└── Services/
+    ├── QueueService.php       # Updated without counter
+    └── PrinterService.php     # Destination-based tickets
+
+resources/views/
+├── livewire/
+│   ├── staff-dashboard.blade.php      # Clean UI
+│   └── public-display.blade.php       # Destination display
+├── components/
+│   ├── queue-card.blade.php           # No counter display
+│   └── layouts/
+│       └── display.blade.php          # Voice interruption
+└── filament/
+    └── resources/destinations/         # Admin CRUD pages
+
+database/
+├── migrations/
+│   ├── create_destinations_table.php
+│   ├── update_queues_table_replace_patient_name_with_destination.php
+│   └── remove_counter_column.php      # Remove counter field
+├── factories/
+│   └── DestinationFactory.php         # Test data
+└── seeders/
+    └── DestinationSeeder.php           # Sample destinations
+```
+
+## 🔌 Real-time Broadcasting
+
+### WebSocket Events
+
+```php
+// Queue events with destination data
+QueueCreated::class   // Broadcasts queue with destination info
+QueueCalled::class    // Triggers voice announcement with interruption
+QueueRecalled::class  // Shows recall indicator on display
+```
+
+### Client-side Listeners
+
+```javascript
+// Echo listeners for real-time updates
+Echo.channel("queues")
+    .listen("QueueCalled", (e) => {
+        stopCurrentSpeech(); // Interrupt previous announcements
+        updateDisplay(e.queue);
+        announceQueue(e.queue.tts_message || defaultMessage);
+    })
+    .listen("QueueRecalled", (e) => {
+        stopCurrentSpeech();
+        updateDisplay(e.queue);
+        announceRecall(e.queue);
+    });
+```
+
+## 🖨️ Thermal Printing Integration
+
+### Enhanced Print Features
+
+-   **Destination-based tickets** - Show destination name instead of counter
+-   **Custom TTS messages** - Include personalized text on tickets
+-   **Fallback handling** - Graceful degradation when printer unavailable
+-   **Multiple printer types** - USB and Bluetooth support
+
+### Print Format Example
+
+```
+=============================
+        TRI MULYO CLINIC
+=============================
+
+Queue Number: GEN-001
+Service: General Consultation
+Destination: Reception Desk
+
+Custom Message:
+"Please proceed to reception
+for initial consultation"
+
+Date: 2025-09-30 14:30:00
+=============================
+```
+
+## 🌐 Production Deployment
+
+### Production Checklist
+
+-   [ ] **Security**: Change default passwords and API keys
+-   [ ] **Database**: Configure production database (MySQL/PostgreSQL)
+-   [ ] **SSL**: Set up HTTPS certificates
+-   [ ] **Broadcasting**: Configure WebSocket service (Pusher/Soketi)
+-   [ ] **Queue Workers**: Set up background job processing
+-   [ ] **Destinations**: Create initial destination records
+-   [ ] **Printers**: Configure thermal printer connections
+-   [ ] **Voice Testing**: Verify speech synthesis in target browsers
+-   [ ] **Permissions**: Test all user roles and access levels
+-   [ ] **Timezone**: Ensure Asia/Jakarta timezone configuration
+-   [ ] **Monitoring**: Set up error tracking and performance monitoring
+
+### Server Requirements
+
+-   **PHP 8.4+** with extensions: PDO, SQLite, BCMath, Ctype, JSON, Mbstring, OpenSSL, Tokenizer, XML
+-   **Web Server**: Nginx/Apache with proper URL rewriting
+-   **Queue Worker**: Supervisor or similar for background jobs
+-   **WebSocket Server**: For real-time features (optional)
+-   **SSL Certificate**: For HTTPS in production
+
+## 🔧 Troubleshooting
+
+### Common Issues & Solutions
+
+#### Voice Announcements Not Working
+
+```bash
+# Check browser compatibility
+- Ensure HTTPS in production (required for speech synthesis)
+- Test in Chrome/Firefox/Safari
+- Check browser permissions for speech synthesis
+```
+
+#### Destination Selection Issues
+
+```bash
+# Ensure destinations exist
+php artisan tinker
+>>> \App\Models\Destination::count()
+>>> \App\Models\Destination::factory(5)->create()
+```
+
+#### Queue Creation Errors
+
+```bash
+# Run latest migrations
+php artisan migrate --force
+
+# Check destination relationships
+php artisan tinker
+>>> $queue = \App\Models\Queue::with('destination')->first()
+>>> $queue->destination
+```
+
+#### Real-time Updates Not Working
+
+```bash
+# Check WebSocket configuration
+php artisan config:cache
+npm run build
+
+# Test broadcasting
+php artisan queue:work --once
+```
+
+### Development Commands
+
+```bash
+# Reset everything (development only)
+php artisan migrate:fresh --seed
+php artisan optimize:clear
+npm run build
+
+# Check application status
+php artisan about
+php artisan route:list
+php artisan config:show database
+
+# Monitor in real-time
+php artisan queue:work --verbose
+php artisan reverb:start --debug
+```
+
+## 📊 Performance & Monitoring
+
+### Database Optimization
+
+-   **Indexed columns**: service_id, destination_id, status, created_at
+-   **Query optimization**: Eager loading relationships
+-   **Daily cleanup**: Automatic old record management
+
+### Caching Strategy
+
+-   **Config caching**: `php artisan config:cache`
+-   **Route caching**: `php artisan route:cache`
+-   **View caching**: `php artisan view:cache`
+-   **Real-time updates**: Efficient WebSocket usage
+
+### Monitoring Points
+
+-   Queue creation rate and success
+-   Voice announcement success rate
+-   Printer connection status
+-   WebSocket connection health
+-   User activity and performance
+
+## 🤝 Contributing
+
+This system follows Laravel 12 best practices:
+
+-   **PSR-12 coding standards** with Laravel Pint formatting
+-   **Comprehensive testing** with Pest PHP testing framework
+-   **Clean architecture** with service classes and event-driven design
+-   **Type declarations** for all methods and parameters
+-   **Modern PHP features** utilizing PHP 8.4 capabilities
+
+### Development Workflow
+
+```bash
+# Before committing
+vendor/bin/pint --dirty     # Format code
+php artisan test            # Run tests
+npm run build              # Build assets
+```
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+
+## 🏥 About TRI MULYO
+
+This queue management system is specifically designed for **TRI MULYO** healthcare facility, incorporating:
+
+-   **Custom branding** and color schemes
+-   **Healthcare workflow** optimization
+-   **Indonesian language** support
+-   **Local timezone** handling (Asia/Jakarta)
+-   **Destination-based routing** for efficient patient flow
+-   **Voice announcement** system for accessibility
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ using Laravel 12, Livewire 3, and modern web technologies</strong><br>
+  <em>Empowering healthcare facilities with intelligent queue management</em>
 </p>
 
 ## About Laravel
