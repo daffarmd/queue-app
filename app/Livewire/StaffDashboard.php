@@ -8,6 +8,7 @@ use App\Models\Service;
 use App\Services\PrinterService;
 use App\Services\QueueService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -19,6 +20,8 @@ class StaffDashboard extends Component
 
     public $selectedDestination = null;
 
+    public $customTTSMessage = 'Nomor antrian {queue_code}. Layanan {service_name}. Silahkan Menuju {destination_name}. Terimakasih.';
+
     protected $listeners = [
         'queueCreated' => '$refresh',
         'queueCalled' => '$refresh',
@@ -28,11 +31,13 @@ class StaffDashboard extends Component
     protected $rules = [
         'selectedService' => 'required|exists:services,id',
         'selectedDestination' => 'required|exists:destinations,id',
+        'customTTSMessage' => 'nullable|string|max:500',
     ];
 
     protected $messages = [
         'selectedService.required' => 'Please select a service.',
         'selectedDestination.required' => 'Please select a destination.',
+        'customTTSMessage.max' => 'TTS message cannot exceed 500 characters.',
     ];
 
     public function getServicesProperty()
@@ -54,11 +59,18 @@ class StaffDashboard extends Component
             ->orderBy('created_at')
             ->get();
 
+        $waiting = $allQueues->where('status', 'waiting')->values();
+        $called = $allQueues->whereIn('status', ['called', 'recalled'])
+            ->sortByDesc(function ($q) {
+                return $q->called_at ? $q->called_at->timestamp : $q->created_at->timestamp;
+            })
+            ->values();
+        $skipped = $allQueues->where('status', 'skipped')->values();
+
         return [
-            'waiting' => $allQueues->where('status', 'waiting')->values(),
-            // UI: Show both called and recalled queues in "called" section
-            'called' => $allQueues->whereIn('status', ['called', 'recalled'])->values(),
-            'skipped' => $allQueues->where('status', 'skipped')->values(),
+            'waiting' => $waiting,
+            'called' => $called,
+            'skipped' => $skipped,
         ];
     }
 
@@ -67,6 +79,12 @@ class StaffDashboard extends Component
         // Check authorization
         if (! Auth::check() || ! Auth::user()->hasAnyRole(['Admin', 'Staff'])) {
             abort(403, 'Unauthorized access');
+        }
+
+        // Load persisted custom TTS message if exists
+        $cached = Cache::get('custom_tts_message');
+        if ($cached) {
+            $this->customTTSMessage = $cached;
         }
     }
 
@@ -142,6 +160,10 @@ class StaffDashboard extends Component
         }
     }
 
+
+
+
+
     public function recallQueue($queueId)
     {
         try {
@@ -159,6 +181,18 @@ class StaffDashboard extends Component
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to recall queue: '.$e->getMessage());
+        }
+    }
+
+    // Removed handleTTS indirection; front-end dispatch goes directly to browser TTS script
+
+    /**
+     * Persist custom TTS message whenever it changes so other displays can use latest template.
+     */
+    public function updatedCustomTTSMessage($value)
+    {
+        if (is_string($value) && strlen($value) <= 500) {
+            Cache::put('custom_tts_message', $value, now()->addDay());
         }
     }
 

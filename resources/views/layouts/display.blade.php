@@ -8,6 +8,13 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body class="bg-gray-100 font-sans antialiased">
+  <div id="audio-unlock-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 cursor-pointer">
+    <div class="text-center text-white">
+      <h2 class="text-4xl font-bold mb-4">Click to Enable Sound</h2>
+      <p class="text-lg">Please click anywhere on the screen to allow voice announcements.</p>
+    </div>
+  </div>
+
   <div class="min-h-screen">
     <!-- Header with TRI MULYO branding -->
     <header class="bg-[#D32F2F] text-white shadow-lg">
@@ -50,170 +57,113 @@
     setInterval(updateClock, 1000);
   </script>
 
-  <!-- Voice Announcement Script -->
+  <!-- TTS Voice Announcement Script -->
   <script>
-    document.addEventListener('livewire:initialized', () => {
-      console.log('Livewire initialized, setting up voice announcements...');
+    document.addEventListener('DOMContentLoaded', () => {
+      const audioUnlockOverlay = document.getElementById('audio-unlock-overlay');
+      const audio = new Audio();
+      audio.volume = 0.9;
+      audio.preload = 'auto';
 
-      // Track current speech state
-      let currentUtterance = null;
-      let isAnnouncing = false;
+      function unlockAudio() {
+        audioUnlockOverlay.style.display = 'none';
+        // Play a silent sound to unlock autoplay
+        audio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+        audio.play().catch(e => console.warn("Could not play silent audio:", e));
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+      }
 
-      // Wait for voices to be loaded
-      function waitForVoices() {
-        return new Promise((resolve) => {
-          if (speechSynthesis.getVoices().length > 0) {
-            resolve();
+      document.addEventListener('click', unlockAudio);
+      document.addEventListener('keydown', unlockAudio);
+
+      async function playTTS(url, fallbackMessage) {
+        if (audio.src && !audio.paused) {
+          audio.pause();
+        }
+
+        return new Promise((resolve, reject) => {
+          audio.src = url;
+
+          const playPromise = audio.play();
+
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              // Autoplay started!
+              const endListener = () => {
+                audio.removeEventListener('ended', endListener);
+                resolve();
+              };
+              audio.addEventListener('ended', endListener);
+            }).catch(error => {
+              console.error('TTS play failed:', error);
+              reject(error);
+            });
           } else {
-            speechSynthesis.addEventListener('voiceschanged', resolve, { once: true });
+            // play() doesn't return a promise in some browsers
+             const endListener = () => {
+                audio.removeEventListener('ended', endListener);
+                resolve();
+              };
+              audio.addEventListener('ended', endListener);
           }
+
+          const errorListener = (err) => {
+            audio.removeEventListener('error', errorListener);
+            console.error('TTS audio element error:', err);
+            reject(err);
+          };
+          audio.addEventListener('error', errorListener);
         });
       }
 
-      // Stop any ongoing speech
-      function stopCurrentSpeech() {
-        if (isAnnouncing && speechSynthesis.speaking) {
-          console.log('🛑 Stopping current speech announcement');
-          speechSynthesis.cancel();
-          currentUtterance = null;
-          isAnnouncing = false;
+      Livewire.on('announceTTS', async (event) => {
+        const data = event[0];
+        let customTemplate = '';
+        const textarea = document.getElementById('customTTSMessage');
+        if (textarea && textarea.value.trim().length > 0) {
+          customTemplate = textarea.value.trim();
         }
-      }
-
-      // Voice announcement function with multiple fallback strategies
-      async function announceMessage(message) {
-        console.log('🔊 Attempting to announce:', message);
-
-        // Stop any ongoing speech before starting new one
-        stopCurrentSpeech();
-
-        // Strategy 1: Try with system default (no specific voice)
-        async function tryBasicSpeech() {
-          return new Promise((resolve) => {
-            console.log('🎯 Strategy 1: Basic speech synthesis');
-            const utterance = new SpeechSynthesisUtterance(message);
-            // Use minimal settings for maximum compatibility
-            utterance.rate = 1.0;
-            utterance.volume = 1.0;
-            utterance.pitch = 1.0;
-            // Don't set language or voice - let browser decide
-
-            currentUtterance = utterance;
-            isAnnouncing = true;
-
-            utterance.onstart = () => {
-              console.log('✅ Basic speech started');
-              resolve(true);
-            };
-            utterance.onend = () => {
-              console.log('✅ Basic speech ended');
-              currentUtterance = null;
-              isAnnouncing = false;
-            };
-            utterance.onerror = (e) => {
-              console.log('❌ Basic speech failed:', e.error);
-              currentUtterance = null;
-              isAnnouncing = false;
-              resolve(false);
-            };
-
-            speechSynthesis.speak(utterance);
-
-            // Timeout after 3 seconds if nothing happens
-            setTimeout(() => {
-              if (currentUtterance === utterance && isAnnouncing) {
-                currentUtterance = null;
-                isAnnouncing = false;
-                resolve(false);
-              }
-            }, 3000);
-          });
+        const params = new URLSearchParams({
+          code: data.code || '',
+          service: data.service || '',
+          destination: data.destination || '',
+          type: data.type || 'called'
+        });
+        if (customTemplate) {
+          params.append('custom_template', customTemplate);
         }
-
-        // Strategy 2: Try with available voices
-        async function tryWithVoices() {
-          return new Promise((resolve) => {
-            console.log('🎯 Strategy 2: Using available voices');
-            const voices = speechSynthesis.getVoices();
-            console.log('Available voices:', voices.length);
-
-            if (voices.length === 0) {
-              resolve(false);
-              return;
-            }
-
-            const utterance = new SpeechSynthesisUtterance(message);
-            // Use the first available voice
-            utterance.voice = voices[0];
-            utterance.lang = voices[0].lang;
-            utterance.rate = 1.0;
-            utterance.volume = 1.0;
-            utterance.pitch = 1.0;
-
-            console.log('Using voice:', voices[0].name, voices[0].lang);
-
-            currentUtterance = utterance;
-            isAnnouncing = true;
-
-            utterance.onstart = () => {
-              console.log('✅ Voice-specific speech started');
-              resolve(true);
-            };
-            utterance.onend = () => {
-              console.log('✅ Voice-specific speech ended');
-              currentUtterance = null;
-              isAnnouncing = false;
-            };
-            utterance.onerror = (e) => {
-              console.log('❌ Voice-specific speech failed:', e.error);
-              currentUtterance = null;
-              isAnnouncing = false;
-              resolve(false);
-            };
-
-            speechSynthesis.speak(utterance);
-            setTimeout(() => {
-              if (currentUtterance === utterance && isAnnouncing) {
-                currentUtterance = null;
-                isAnnouncing = false;
-                resolve(false);
-              }
-            }, 3000);
-          });
+        const instantUrl = `/tts/instant-queue?${params.toString()}`;
+        try {
+          await playTTS(instantUrl);
+        } catch (error) {
+          console.error('TTS failed:', error.message);
         }
+      });
 
-        // Strategy 3: Silent fallback (no visual notification)
-        function silentFallback() {
-          console.log('🎯 Strategy 3: Silent fallback - no visual notification');
-          console.log('⚠️ Speech synthesis failed or not supported, continuing silently');
+      Livewire.on('sendCustomTTS', async (event) => {
+        const data = event[0];
+        const instantUrl = `/tts/instant?text=${encodeURIComponent(data.message)}`;
+        try {
+          await playTTS(instantUrl);
+        } catch (error) {
+          console.warn('Custom TTS failed:', error.message);
         }
+      });
 
-        // Execute strategies in order
-        if ('speechSynthesis' in window) {
-          // Wait for voices to load
-          await waitForVoices();
+      document.addEventListener('click', function(e) {
+        const button = e.target.closest('.tts-announce-btn');
+        if (button) {
+          const queueCode = button.dataset.queueCode;
+          const serviceName = button.dataset.serviceName;
+          const destinationName = button.dataset.destinationName;
 
-          // Try basic speech first
-          const basicSuccess = await tryBasicSpeech();
-          if (basicSuccess) return;
-
-          // Try with specific voices
-          const voiceSuccess = await tryWithVoices();
-          if (voiceSuccess) return;
-
-          // If all speech attempts fail, use silent fallback
-          console.log('⚠️ All speech synthesis attempts failed, using silent fallback');
-          silentFallback();
-        } else {
-          console.log('⚠️ Speech synthesis not supported, using silent fallback');
-          silentFallback();
+          if (queueCode && serviceName) {
+            const message = `Queue ${queueCode} to ${destinationName || serviceName}`;
+            const instantUrl = `/tts/instant?text=${encodeURIComponent(message)}`;
+            playTTS(instantUrl).catch(error => console.warn('TTS play failed:', error));
+          }
         }
-      }
-
-      Livewire.on('announceQueue', async (event) => {
-        console.log('Voice announcement triggered:', event);
-        const message = event[0].message;
-        await announceMessage(message);
       });
     });
 
@@ -223,6 +173,78 @@
         Livewire.dispatch('refreshData');
       }
     }, 30000);
+
+    // TTS Controls for Staff Dashboard
+    function updateCharCount() {
+      const textarea = document.getElementById('customTTSMessage');
+      const counter = document.getElementById('tts-char-count');
+      if (textarea && counter) {
+        counter.textContent = textarea.value.length;
+      }
+    }
+
+    async function testTTSConnection() {
+      const statusEl = document.getElementById('tts-status');
+      const statusText = statusEl.querySelector('.status-text');
+      const spinner = statusEl.querySelector('.loading-spinner');
+
+      spinner.classList.remove('hidden');
+      statusText.textContent = 'Testing...';
+      statusText.className = 'status-text text-blue-600';
+
+      try {
+        const healthResponse = await fetch('/tts/health');
+        const healthData = await healthResponse.json();
+
+        if (healthData.piper_available) {
+          const testResponse = await fetch('/tts/test');
+
+          if (testResponse.ok) {
+            const audioBlob = await testResponse.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+
+            audio.onended = () => {
+              URL.revokeObjectURL(audioUrl);
+              statusText.textContent = 'TTS Connected';
+              statusText.className = 'status-text text-green-600';
+            };
+
+            await audio.play();
+          } else {
+            throw new Error('TTS generation failed');
+          }
+        } else {
+          throw new Error('Piper TTS server not available');
+        }
+
+      } catch (error) {
+        console.warn('TTS test failed:', error);
+        statusText.textContent = 'TTS Offline';
+        statusText.className = 'status-text text-red-600';
+      } finally {
+        spinner.classList.add('hidden');
+
+        setTimeout(() => {
+          statusText.textContent = 'Ready';
+          statusText.className = 'status-text text-gray-600';
+        }, 3000);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const textarea = document.getElementById('customTTSMessage');
+      if (textarea) {
+        textarea.addEventListener('input', updateCharCount);
+        updateCharCount();
+      }
+    });
+
+    document.addEventListener('livewire:initialized', () => {
+      Livewire.hook('morph.updated', () => {
+        updateCharCount();
+      });
+    });
   </script>
 </body>
 </html>

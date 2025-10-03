@@ -37,9 +37,13 @@ class PublicDisplay extends Component
     {
         $this->refreshDisplay();
 
-        // Trigger voice announcement
-        $this->dispatch('announceQueue', [
-            'message' => "Queue {$queueData['code']}, to {$queueData['destination_name']}, please come to your destination",
+        // Trigger TTS announcement with Piper
+        $this->dispatch('announceTTS', [
+            'code' => $queueData['code'],
+            'service' => $queueData['service_name'] ?? '',
+            'destination' => $queueData['destination_name'] ?? '',
+            'type' => 'called',
+            'fallback_message' => "Queue {$queueData['code']}, to {$queueData['destination_name']}, please come to your destination",
         ]);
     }
 
@@ -47,9 +51,13 @@ class PublicDisplay extends Component
     {
         $this->refreshDisplay();
 
-        // Trigger voice announcement for recalled queue
-        $this->dispatch('announceQueue', [
-            'message' => "Queue {$queueData['code']}, to {$queueData['destination_name']}, please return to your destination",
+        // Trigger TTS announcement for recalled queue
+        $this->dispatch('announceTTS', [
+            'code' => $queueData['code'],
+            'service' => $queueData['service_name'] ?? '',
+            'destination' => $queueData['destination_name'] ?? '',
+            'type' => 'recalled',
+            'fallback_message' => "Queue {$queueData['code']}, to {$queueData['destination_name']}, please return to your destination",
         ]);
     }
 
@@ -62,8 +70,14 @@ class PublicDisplay extends Component
         // If there's a new current queue, announce it
         if ($this->currentQueue && (! $previousQueue || $this->currentQueue->id !== $previousQueue->id)) {
             $destinationName = $this->currentQueue->destination?->name ?? 'your destination';
-            $this->dispatch('announceQueue', [
-                'message' => "Queue {$this->currentQueue->code}, to {$destinationName}, please come to your destination",
+            $serviceName = $this->currentQueue->service?->name ?? '';
+
+            $this->dispatch('announceTTS', [
+                'code' => $this->currentQueue->code,
+                'service' => $serviceName,
+                'destination' => $destinationName,
+                'type' => $this->currentQueue->status === 'recalled' ? 'recalled' : 'called',
+                'fallback_message' => "Queue {$this->currentQueue->code}, to {$destinationName}, please come to your destination",
             ]);
         }
     }

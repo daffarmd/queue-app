@@ -42,4 +42,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('profile', 'profile')->name('profile');
 });
 
+// TTS routes
+Route::prefix('tts')->name('tts.')->group(function () {
+    Route::get('/audio', [App\Http\Controllers\TTSController::class, 'generateAudio'])->name('audio');
+    Route::get('/queue', [App\Http\Controllers\TTSController::class, 'queueAnnouncement'])->name('queue');
+    Route::get('/health', [App\Http\Controllers\TTSController::class, 'health'])->name('health');
+    Route::get('/test', [App\Http\Controllers\TTSController::class, 'test'])->name('test');
+    Route::post('/custom', [App\Http\Controllers\TTSController::class, 'customAnnouncement'])->name('custom');
+
+    // Instant streaming routes (no caching, direct from Piper)
+    Route::get('/instant', [App\Http\Controllers\InstantTTSController::class, 'instantStream'])->name('instant');
+    Route::get('/instant-queue', [App\Http\Controllers\InstantTTSController::class, 'instantQueue'])->name('instant.queue');
+    Route::get('/data-uri', [App\Http\Controllers\InstantTTSController::class, 'dataUri'])->name('data.uri');
+    Route::get('/stream', [App\Http\Controllers\InstantTTSController::class, 'streamChunked'])->name('stream');
+});
+
+// TTS Demo page
+Route::get('/tts-demo', function () {
+    return view('tts-demo');
+})->name('tts.demo');
+
 require __DIR__.'/auth.php';

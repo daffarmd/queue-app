@@ -41,10 +41,10 @@ class QueueCalled implements ShouldBroadcast
             'id' => $this->queue->id,
             'code' => $this->queue->code,
             'destination_name' => $this->queue->destination?->name ?? 'your destination',
-            'service' => $this->queue->service->name,
+            'service_name' => $this->queue->service->name,
+            'service' => $this->queue->service->name, // Keep for backward compatibility
             'service_id' => $this->queue->service_id,
             'destination_id' => $this->queue->destination_id,
-            'counter' => $this->queue->counter,
             'status' => $this->queue->status,
             'called_at' => $this->queue->called_at?->toISOString(),
         ];

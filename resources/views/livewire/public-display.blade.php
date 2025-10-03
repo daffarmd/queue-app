@@ -6,12 +6,7 @@
 
     @if($currentQueue)
       <div class="text-center">
-        <div class="inline-block bg-[#D32F2F] text-white px-8 py-4 rounded-lg mb-4 relative">
-          @if($currentQueue->status === 'recalled')
-            <div class="absolute -top-2 -right-2 bg-[#F59E0B] text-white text-xs px-2 py-1 rounded-full font-bold">
-              🔄 RECALLED
-            </div>
-          @endif
+        <div class="inline-block bg-[#D32F2F] text-white px-8 py-4 rounded-lg mb-4">
           <div class="text-6xl font-bold mb-2">{{ $currentQueue->code }}</div>
           <div class="text-xl">{{ $currentQueue->destination?->name ?? 'No destination' }}</div>
         </div>
