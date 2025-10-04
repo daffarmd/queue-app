@@ -6,7 +6,7 @@
   <title>{{ $title ?? 'TRI MULYO - Queue Display' }}</title>
   
   <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="{{ asset('icon-tri-mulyo.png') }}">
+  <link rel="icon" type="image/png" href="{{ asset('icon-tri-mulyo.png') }}">
   
   @vite(['resources/css/app.css', 'resources/js/app.js'])
   <meta name="csrf-token" content="{{ csrf_token() }}">
