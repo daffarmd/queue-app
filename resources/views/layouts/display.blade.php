@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ $title ?? 'TRI MULYO - Queue Display' }}</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{{ asset('icon-tri-mulyo.png') }}">
+  
   @vite(['resources/css/app.css', 'resources/js/app.js'])
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
@@ -12,10 +16,13 @@
     <!-- Header with TRI MULYO branding -->
     <header class="bg-[#D32F2F] text-white shadow-lg">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-6">
-          <div>
-            <h1 class="text-3xl font-bold uppercase tracking-wide">TRI MULYO</h1>
-            <p class="text-red-200 text-sm">Healthcare Queue Management System</p>
+        <div class="flex justify-between items-center py-4">
+          <div class="flex items-center space-x-6">
+            <img src="{{ asset('icon-tri-mulyo.png') }}" alt="TRI MULYO Logo" class="h-20 w-20 object-contain">
+            <div>
+              <h1 class="text-4xl font-bold uppercase tracking-wide">TRI MULYO</h1>
+              <p class="text-red-200 text-base">Healthcare Queue Management System</p>
+            </div>
           </div>
           <div class="text-right">
             <div class="text-xl font-semibold" id="currentTime"></div>
