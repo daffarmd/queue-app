@@ -1,4 +1,4 @@
-@props(['queue', 'showActions' => false])
+@props(['queue', 'showActions' => false, 'isTopCalled' => false])
 
 @php
 $statusClasses = [
@@ -10,9 +10,8 @@ $statusClasses = [
 ];
 $classes = $statusClasses[$queue->status] ?? $statusClasses['skipped'];
 
-// For UI purposes, show recalled as called with special indicator
+// For UI purposes, show recalled as called
 $displayStatus = $queue->status === 'recalled' ? 'called' : $queue->status;
-$isRecalled = $queue->status === 'recalled';
 @endphp
 
 <div class="bg-white rounded-lg shadow-md p-4 border-l-4 {{ $classes['border'] }}">
@@ -23,9 +22,6 @@ $isRecalled = $queue->status === 'recalled';
         <h3 class="text-lg font-bold text-gray-900">{{ $queue->code }}</h3>
         <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $classes['bg'] }} {{ $classes['text'] }}">
           {{ ucfirst($displayStatus) }}
-          @if($isRecalled)
-            <span class="ml-1">🔄</span>
-          @endif
         </span>
       </div>
 
@@ -70,6 +66,18 @@ $isRecalled = $queue->status === 'recalled';
         <button wire:click="recallQueue({{ $queue->id }})"
                 class="bg-[#F59E0B] text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]">
           Recall
+        </button>
+      @endif
+
+      <!-- TTS Announce Button - Only for called/recalled queues -->
+  @if(in_array($queue->status, ['called', 'recalled']) && $isTopCalled)
+        <button class="tts-announce-btn bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                data-queue-code="{{ $queue->code }}"
+                data-service-name="{{ $queue->service->name }}"
+                data-destination-name="{{ $queue->destination?->name ?? '' }}"
+                data-type="{{ $queue->status }}"
+                title="Announce this queue">
+          🔊 TTS
         </button>
       @endif
     </div>
